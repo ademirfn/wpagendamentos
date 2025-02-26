@@ -1,0 +1,7 @@
+#agendamento-form {
+    max-width: 400px;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}

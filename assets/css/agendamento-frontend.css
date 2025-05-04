@@ -5,3 +5,40 @@
     flex-direction: column;
     gap: 10px;
 }
+
+.flatpickr-datetime {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.agendamento-opcoes {
+    margin-top: 20px;
+}
+
+.agendamento-botoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.botao-horario {
+    padding: 10px 15px;
+    background-color: #0073aa;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.botao-horario:hover {
+    background-color: #005177;
+}
+
+.botao-horario.selecionado {
+    background-color: #00a0d2;
+    font-weight: bold;
+}

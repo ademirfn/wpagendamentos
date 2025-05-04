@@ -1,4 +1,12 @@
 jQuery(document).ready(function ($) {
+    // Inicializa o Flatpickr no campo de data e hora
+    $('.flatpickr-datetime').flatpickr({
+        enableTime: true,
+        dateFormat: "Y-m-d H:i",
+        time_24hr: true,
+        minDate: "today", // Impede seleção de datas passadas
+    });
+
     $('#agendamento-form').on('submit', function (e) {
         e.preventDefault();
 

@@ -2,7 +2,7 @@
 /*
 Plugin Name: Agendamento Otimizado WooCommerce
 Description: Sistema de agendamento otimizado para serviços no WooCommerce.
-Version: 1.01
+Version: 1.02
 Author: Ademir Neissinger
 */
 
@@ -24,20 +24,21 @@ define('AGENDAMENTO_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Carrega os arquivos necessários
 function agendamento_otimizado_autoload() {
-    // Primeiro carrega a classe do produto
+    // Classes principais
     require_once AGENDAMENTO_PLUGIN_PATH . 'includes/class-wc-product-agendamento.php';
-    
-    // Depois carrega as outras classes
     require_once AGENDAMENTO_PLUGIN_PATH . 'includes/class-agendamento-plugin.php';
 
+    // Classes específicas para o admin
     if (is_admin()) {
         require_once AGENDAMENTO_PLUGIN_PATH . 'includes/class-agendamento-admin.php';
     }
 
+    // Classes específicas para o frontend
     if (!is_admin()) {
         require_once AGENDAMENTO_PLUGIN_PATH . 'includes/class-agendamento-frontend.php';
     }
 }
+add_action('plugins_loaded', 'agendamento_otimizado_autoload');
 
 // Registra o tipo de produto
 add_action('init', function() {
@@ -49,7 +50,6 @@ add_action('init', function() {
 
 // Inicializa o plugin
 function inicializar_agendamento_plugin() {
-    agendamento_otimizado_autoload();
     new Agendamento_Plugin();
 }
 add_action('plugins_loaded', 'inicializar_agendamento_plugin', 20);

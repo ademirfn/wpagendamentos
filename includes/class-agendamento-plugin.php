@@ -24,6 +24,9 @@ class Agendamento_Plugin {
         // Menu de administração
         add_action('admin_menu', [$this, 'registrar_menu_agendamentos']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
+        
+        // Adicione esta linha
+        add_action('wp_ajax_get_agendamentos_aprovados', [$this, 'get_agendamentos_aprovados']);
     }
 
     public function includes() {
@@ -77,9 +80,126 @@ class Agendamento_Plugin {
 
     public function render_agendamento_page() {
         echo '<div class="wrap">';
-        echo '<h1>' . __('Agendamentos', 'agendamento-otimizado') . '</h1>';
-        echo '<p>' . __('Bem-vindo à página de gerenciamento de agendamentos.', 'agendamento-otimizado') . '</p>';
+        echo '<h1>' . __('Agenda de Atendimentos', 'agendamento-otimizado') . '</h1>';
+        
+        // Container para o calendário
+        echo '<div id="calendario-agendamentos"></div>';
+        
+        // Adiciona o calendário
+        $this->enqueue_calendar_assets();
+        
+        echo '<style>
+            #calendario-agendamentos {
+                margin-top: 20px;
+                background: #fff;
+                padding: 20px;
+                border-radius: 4px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            .fc-event {
+                cursor: pointer;
+            }
+            .fc-event-title {
+                font-weight: bold;
+            }
+            .fc-toolbar-title {
+                font-size: 1.5em !important;
+            }
+        </style>';
+        
         echo '</div>';
+    }
+
+    private function enqueue_calendar_assets() {
+        // Enfileira os assets do FullCalendar
+        wp_enqueue_style('flatpickr-css', AGENDAMENTO_PLUGIN_URL . 'assets/css/flatpickr.min.css');
+        wp_enqueue_script('flatpickr-js', 'https://cdn.jsdelivr.net/npm/flatpickr', [], null, true);
+        wp_enqueue_style('fullcalendar-css', AGENDAMENTO_PLUGIN_URL . 'assets/css/main.min.css');
+        wp_enqueue_script('fullcalendar-js', 'https://cdn.jsdelivr.net/npm/fullcalendar/main.min.js', [], null, true);
+        wp_enqueue_script('fullcalendar-daygrid', 'https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid/main.min.js', ['fullcalendar-js'], null, true);
+        wp_enqueue_script('fullcalendar-timegrid', 'https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid/main.min.js', ['fullcalendar-js'], null, true);
+        wp_enqueue_script('fullcalendar-locale', 'https://cdn.jsdelivr.net/npm/fullcalendar/locales/pt-br.js', ['fullcalendar-js'], null, true);
+
+        // Adiciona o JavaScript personalizado
+        wp_add_inline_script('fullcalendar-js', $this->get_calendar_script());
+    }
+
+    private function get_calendar_script() {
+        ob_start();
+        ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendario-agendamentos');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                locale: 'pt-br',
+                initialView: 'timeGridWeek',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                events: {
+                    url: ajaxurl,
+                    method: 'POST',
+                    extraParams: {
+                        action: 'get_agendamentos_aprovados'
+                    }
+                },
+                slotMinTime: '08:00:00',
+                slotMaxTime: '20:00:00',
+                buttonText: {
+                    today: 'Hoje',
+                    month: 'Mês',
+                    week: 'Semana',
+                    day: 'Dia'
+                },
+                eventClick: function(info) {
+                    alert('Agendamento: ' + info.event.title + '\nHorário: ' + info.event.start.toLocaleString());
+                }
+            });
+            calendar.render();
+        });
+        <?php
+        return ob_get_clean();
+    }
+
+    // Adicione este método para buscar os agendamentos aprovados
+    public function get_agendamentos_aprovados() {
+        global $wpdb;
+        
+        // Busca pedidos com status 'completed' ou 'processing'
+        $orders = wc_get_orders([
+            'status' => ['completed', 'processing'],
+            'limit' => -1
+        ]);
+
+        $events = [];
+        
+        foreach ($orders as $order) {
+            foreach ($order->get_items() as $item) {
+                $horario_agendado = $item->get_meta('Data e Horário Agendados');
+                
+                if ($horario_agendado) {
+                    // Converte o formato do horário para o FullCalendar
+                    $data_hora = DateTime::createFromFormat('d/m/Y H:i', $horario_agendado);
+                    
+                    if ($data_hora) {
+                        $events[] = [
+                            'title' => sprintf(
+                                'Pedido #%s - %s',
+                                $order->get_order_number(),
+                                $item->get_name()
+                            ),
+                            'start' => $data_hora->format('Y-m-d\TH:i:s'),
+                            'end' => $data_hora->modify('+1 hour')->format('Y-m-d\TH:i:s'),
+                            'backgroundColor' => '#2271b1',
+                            'borderColor' => '#2271b1'
+                        ];
+                    }
+                }
+            }
+        }
+
+        wp_send_json($events);
     }
 
     public function salvar_horario_no_pedido($cart_item_data, $product_id) {
@@ -259,8 +379,17 @@ class Agendamento_Plugin {
     }
 
     public function enqueue_admin_assets() {
-        wp_enqueue_style('flatpickr-css', 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css');
+        // Enfileira os assets do FullCalendar
+        wp_enqueue_style('flatpickr-css', AGENDAMENTO_PLUGIN_URL . 'assets/css/flatpickr.min.css');
         wp_enqueue_script('flatpickr-js', 'https://cdn.jsdelivr.net/npm/flatpickr', [], null, true);
+        wp_enqueue_style('fullcalendar-css', AGENDAMENTO_PLUGIN_URL . 'assets/css/main.min.css');
+        wp_enqueue_script('fullcalendar-js', 'https://cdn.jsdelivr.net/npm/fullcalendar/main.min.js', [], null, true);
+        wp_enqueue_script('fullcalendar-daygrid', 'https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid/main.min.js', ['fullcalendar-js'], null, true);
+        wp_enqueue_script('fullcalendar-timegrid', 'https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid/main.min.js', ['fullcalendar-js'], null, true);
+        wp_enqueue_script('fullcalendar-locale', 'https://cdn.jsdelivr.net/npm/fullcalendar/locales/pt-br.js', ['fullcalendar-js'], null, true);
+
+        // Adiciona o JavaScript personalizado
+        wp_add_inline_script('fullcalendar-js', $this->get_calendar_script());
     }
 
     public function exibir_dias_horarios_disponiveis($product_id) {
